@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"marvincrypto/types"
+	"math/big"
 )
 
 type PrivateKey struct {
@@ -14,6 +15,19 @@ type PrivateKey struct {
 
 type PublicKey struct {
 	key *ecdsa.PublicKey
+}
+
+type Signature struct {
+	s, r *big.Int
+}
+
+func (k PrivateKey) Sign(data []byte) (*Signature, error) {
+	r, s, err := ecdsa.Sign(rand.Reader, k.key, data)
+	if err != nil {
+		return nil, err
+	}
+	return &Signature{r: r, s: s}, nil
+
 }
 
 func GeneratePrivateKey() PrivateKey {
@@ -39,5 +53,6 @@ func (k PublicKey) Address() types.Address {
 	return types.AddressFromBytes(h[len(h)-20:])
 }
 
-type Signature struct {
+func (sig Signature) Verify(pubKey PublicKey, data []byte) bool {
+	return ecdsa.Verify(pubKey.key, data, sig.r, sig.s)
 }
