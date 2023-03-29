@@ -1,8 +1,8 @@
 package core
 
 import (
-	"bytes"
 	"fmt"
+	"marvincrypto/crypto"
 	"marvincrypto/types"
 	"testing"
 	"time"
@@ -10,57 +10,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHeader_Encode_Decode(t *testing.T) {
-	h := &Header{
-		Version:   1,
-		PrevBlock: types.RandomHash(),
-		Timestamp: time.Now().UnixNano(),
-		Height:    10,
-		Nonce:     989394,
+func randomBlock(height uint32) *Block {
+	header := &Header{
+		Version:       1,
+		PrevBlockHash: types.RandomHash(),
+		Height:        height,
+		Timestamp:     time.Now().UnixNano(),
 	}
-
-	buf := &bytes.Buffer{}
-	assert.Nil(t, h.EncodeBinary(buf))
-
-	hDecode := &Header{}
-	assert.Nil(t, hDecode.DecodeBinary(buf))
-	assert.Equal(t, h, hDecode)
+	tx := Transaction{
+		Data: []byte("crypto"),
+	}
+	return NewBlock(header, []Transaction{tx})
 }
 
-func TestBlock_Encode_Decode(t *testing.T) {
-	b := &Block{
-		Header: Header{
-			Version:   1,
-			PrevBlock: types.RandomHash(),
-			Timestamp: time.Now().UnixNano(),
-			Height:    10,
-			Nonce:     989394,
-		},
-		Transactions: nil,
-	}
-	buf := &bytes.Buffer{}
-	assert.Nil(t, b.EncodeBinary(buf))
-
-	bDecode := &Block{}
-	assert.Nil(t, bDecode.DecodeBinary(buf))
-	assert.Equal(t, b, bDecode)
-	fmt.Printf("%+v", bDecode)
-
+func TestHasBlock(t *testing.T) {
+	b := randomBlock(0)
+	fmt.Println(b.Hash(BlockHasher{}))
 }
 
-func TestBlockHash(t *testing.T) {
-	b := &Block{
-		Header: Header{
-			Version:   1,
-			PrevBlock: types.RandomHash(),
-			Timestamp: time.Now().UnixNano(),
-			Height:    10,
-		},
-		Transactions: []Transaction{},
-	}
+func TestSignBlock(t *testing.T) {
+	privateKey := crypto.GeneratePrivateKey()
+	b := randomBlock(1)
+	fmt.Println(b.Sign(privateKey))
+	assert.Nil(t, b.Sign(privateKey))
+	assert.NotNil(t, b.Signature)
+}
 
-	h := b.Hash()
-	fmt.Println(h)
-	assert.False(t, h.IsZero())
-
+func TestVerifyBlock(t *testing.T) {
+	privateKey := crypto.GeneratePrivateKey()
+	b := randomBlock(1)
+	fmt.Println(b.Sign(privateKey))
+	assert.Nil(t, b.Sign(privateKey))
+	assert.Nil(t, b.Verify())
 }
