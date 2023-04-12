@@ -1,6 +1,7 @@
 package core
 
 import (
+	"marvincrypto/types"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,13 @@ func newBlockchainWithGenesis(t *testing.T) *Blockchain {
 	return bc
 }
 
+func getPrevBlockHash(t *testing.T, bc *Blockchain, height uint32) types.Hash {
+	prevHeader, err := bc.GetHeader(height - 1)
+	assert.Nil(t, err)
+	return BlockHasher{}.Hash(prevHeader)
+
+}
+
 func TestNewBlockchain(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
 
@@ -19,9 +27,11 @@ func TestNewBlockchain(t *testing.T) {
 	assert.Equal(t, bc.Height(), uint32(0))
 }
 
-func TestHashBlock(t *testing.T) {
+func TestHasBlock(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
 	assert.True(t, bc.HasBlock(0))
+	assert.False(t, bc.HasBlock(10))
+	assert.False(t, bc.HasBlock(100))
 }
 
 func TestAddBlock(t *testing.T) {

@@ -3,12 +3,29 @@ package core
 import (
 	"fmt"
 	"marvincrypto/crypto"
+	"marvincrypto/types"
 )
 
 type Transaction struct {
 	Data      []byte
 	PublicKey crypto.PublicKey
 	Signature *crypto.Signature
+	hash      types.Hash
+	//firstseen is the timestamp of when this tx is first seen locally
+	firstSeen int64
+}
+
+func NewTransaction(data []byte) *Transaction {
+	return &Transaction{
+		Data: data,
+	}
+}
+
+func (tx *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash {
+	if tx.hash.IsZero() {
+		tx.hash = hasher.Hash(tx)
+	}
+	return tx.hash
 }
 
 func (tx *Transaction) Sign(privateKey crypto.PrivateKey) error {
@@ -29,4 +46,12 @@ func (tx *Transaction) Verify() error {
 		return fmt.Errorf("invalid transaction signature")
 	}
 	return nil
+}
+
+func (tx *Transaction) SetFirstSeen(t int64) {
+	tx.firstSeen = t
+}
+
+func (tx *Transaction) FirstSeen() int64 {
+	return tx.firstSeen
 }
