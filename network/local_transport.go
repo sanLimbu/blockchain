@@ -13,7 +13,7 @@ type LocalTransport struct {
 	peers     map[NetAddr]*LocalTransport
 }
 
-func NewLocalTransport(addr NetAddr) Transport {
+func NewLocalTransport(addr NetAddr) *LocalTransport {
 	return &LocalTransport{
 		addr:      addr,
 		consumeCh: make(chan RPC, 1024),
@@ -44,6 +44,15 @@ func (t *LocalTransport) SendMessage(to NetAddr, payload []byte) error {
 	peer.consumeCh <- RPC{
 		From:    t.addr,
 		Payload: bytes.NewReader(payload),
+	}
+	return nil
+}
+
+func (t *LocalTransport) Broadcast(payload []byte) error {
+	for _, peer := range t.peers {
+		if err := t.SendMessage(peer.Addr(), payload); err != nil {
+			return err
+		}
 	}
 	return nil
 }
