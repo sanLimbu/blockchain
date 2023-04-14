@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"log"
 	"marvincrypto/core"
 	"marvincrypto/crypto"
 	"marvincrypto/network"
@@ -15,28 +17,54 @@ import (
 func main() {
 
 	trLocal := network.NewLocalTransport("LOCAL")
-	trRemote := network.NewLocalTransport("REMOTE")
+	trRemoteA := network.NewLocalTransport("REMOTE_A")
+	trRemotB := network.NewLocalTransport("REMOTE_B")
+	trRemoteC := network.NewLocalTransport("REMOTE_C")
+	trRemoteD := network.NewLocalTransport("REMOTE_D")
 
-	trLocal.Connect(trRemote)
-	trRemote.Connect(trLocal)
+	trLocal.Connect(trRemoteA)
+	trRemoteA.Connect(trRemotB)
+	trRemotB.Connect(trRemoteC)
+	trRemoteC.Connect(trRemoteD)
+
+	trRemoteA.Connect(trLocal)
+
+	initRemoteServer([]network.Transport{trRemoteA, trRemotB, trRemoteC, trRemoteD})
 
 	go func() {
 		for {
-			//trRemote.SendMessage(trLocal.Addr(), []byte("hello world"))
-			if err := sendTransaction(trRemote, trLocal.Addr()); err != nil {
+			if err := sendTransaction(trRemoteA, trLocal.Addr()); err != nil {
 				logrus.Error(err)
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 	}()
 
-	opts := network.ServerOpts{
-		Transports: []network.Transport{trLocal},
+	privateKey := crypto.GeneratePrivateKey()
+	localServer := makeServer("LOCAL", trLocal, &privateKey)
+	localServer.Start()
+
+}
+
+func initRemoteServer(trs []network.Transport) {
+	for i := 0; i < len(trs); i++ {
+		id := fmt.Sprintf("REMOTE_%d", i)
+		s := makeServer(id, trs[i], nil)
+		go s.Start()
 	}
+}
 
-	s := network.NewServer(opts)
-	s.Start()
-
+func makeServer(id string, tr network.Transport, pk *crypto.PrivateKey) *network.Server {
+	opts := network.ServerOpts{
+		PrivateKey: pk,
+		ID:         id,
+		Transports: []network.Transport{tr},
+	}
+	s, err := network.NewServer(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return s
 }
 
 func sendTransaction(tr network.Transport, to network.NetAddr) error {
