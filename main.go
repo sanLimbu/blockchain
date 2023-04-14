@@ -20,16 +20,13 @@ func main() {
 	trRemoteA := network.NewLocalTransport("REMOTE_A")
 	trRemotB := network.NewLocalTransport("REMOTE_B")
 	trRemoteC := network.NewLocalTransport("REMOTE_C")
-	trRemoteD := network.NewLocalTransport("REMOTE_D")
 
 	trLocal.Connect(trRemoteA)
 	trRemoteA.Connect(trRemotB)
 	trRemotB.Connect(trRemoteC)
-	trRemoteC.Connect(trRemoteD)
-
 	trRemoteA.Connect(trLocal)
 
-	initRemoteServer([]network.Transport{trRemoteA, trRemotB, trRemoteC, trRemoteD})
+	initRemoteServer([]network.Transport{trRemoteA, trRemotB, trRemoteC})
 
 	go func() {
 		for {
@@ -38,6 +35,15 @@ func main() {
 			}
 			time.Sleep(2 * time.Second)
 		}
+	}()
+
+	go func() {
+		time.Sleep(8 * time.Second)
+		trLate := network.NewLocalTransport("LATE_REMOTE")
+		trRemoteC.Connect(trLate)
+		lateServer := makeServer(string(trLate.Addr()), trLate, nil)
+
+		go lateServer.Start()
 	}()
 
 	privateKey := crypto.GeneratePrivateKey()

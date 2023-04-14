@@ -134,6 +134,8 @@ func (s *Server) ProcessMessage(msg *DecodedMessage) error {
 	switch t := msg.Data.(type) {
 	case *core.Transaction:
 		return s.processTrasaction(t)
+	case *core.Block:
+		return s.processBlock(t)
 	}
 	return nil
 }
@@ -144,6 +146,17 @@ func (s *Server) broadcast(payload []byte) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *Server) processBlock(b *core.Block) error {
+
+	if err := s.chain.AddBlock(b); err != nil {
+		return err
+	}
+
+	go s.broadcastBlock(b)
+
 	return nil
 }
 
@@ -158,6 +171,12 @@ func (s *Server) processTrasaction(tx *core.Transaction) error {
 	if err := tx.Verify(); err != nil {
 		return err
 	}
+
+	// s.Logger.Log(
+	// 	"msg", "adding new tx to mempool",
+	// 	"hash", hash,
+	// 	"mempoolPending", s.memPool.PendingCount(),
+	// )
 
 	tx.SetFirstSeen(time.Now().UnixNano())
 

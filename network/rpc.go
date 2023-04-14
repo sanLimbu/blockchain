@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"marvincrypto/core"
+
+	"github.com/sirupsen/logrus"
 )
 
 type MessageType byte
@@ -51,6 +53,11 @@ func DefaultRPCDecodeFunc(rpc RPC) (*DecodedMessage, error) {
 		return nil, fmt.Errorf("failed to decode message from %s: %s", rpc.From, err)
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"from": rpc.From,
+		"type": msg.Header,
+	}).Debug("new icoming message")
+
 	switch msg.Header {
 	case MessageTypeTx:
 		tx := new(core.Transaction)
@@ -61,6 +68,17 @@ func DefaultRPCDecodeFunc(rpc RPC) (*DecodedMessage, error) {
 			From: rpc.From,
 			Data: tx,
 		}, nil
+
+	case MessageTypeBlock:
+		block := new(core.Block)
+		if err := block.Decode(core.NewGobBlockDecoder(bytes.NewReader(msg.Data))); err != nil {
+			return nil, err
+		}
+		return &DecodedMessage{
+			From: rpc.From,
+			Data: block,
+		}, nil
+
 	default:
 		return nil, fmt.Errorf("Invalid message header %x", msg.Header)
 	}
