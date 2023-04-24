@@ -13,8 +13,9 @@ import (
 type MessageType byte
 
 const (
-	MessageTypeTx    MessageType = 0x1
-	MessageTypeBlock MessageType = 0x2
+	MessageTypeTx        MessageType = 0x1
+	MessageTypeBlock     MessageType = 0x2
+	MessageTypeGetBlocks MessageType = 0x3
 )
 
 type RPC struct {

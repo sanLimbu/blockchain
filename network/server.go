@@ -178,7 +178,7 @@ func (s *Server) processTrasaction(tx *core.Transaction) error {
 	// 	"mempoolPending", s.memPool.PendingCount(),
 	// )
 
-	tx.SetFirstSeen(time.Now().UnixNano())
+	//tx.SetFirstSeen(time.Now().UnixNano())
 
 	go s.broadcastTx(tx)
 

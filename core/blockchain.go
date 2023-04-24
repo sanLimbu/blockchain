@@ -34,7 +34,7 @@ func (bc *Blockchain) AddBlock(b *Block) error {
 	if err := bc.validator.ValidateBlock(b); err != nil {
 		return err
 	}
-	return nil
+	return bc.addBlockWithoutValidation(b)
 }
 
 func (bc *Blockchain) HasBlock(height uint32) bool {
