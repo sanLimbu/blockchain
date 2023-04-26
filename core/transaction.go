@@ -1,23 +1,53 @@
 package core
 
 import (
+	"encoding/gob"
 	"fmt"
 	"marvincrypto/crypto"
 	"marvincrypto/types"
+	"math/rand"
 )
 
+type TxType byte
+
+const (
+	TxTypeCollection TxType = iota // 0x0
+	TxTypeMint                     // 0x01
+)
+
+type CollectionTx struct {
+	Fee      int64
+	MetaData []byte
+}
+
+type MintTx struct {
+	Fee             int64
+	NFT             types.Hash
+	Collection      types.Hash
+	MetaData        []byte
+	CollectionOwner crypto.PublicKey
+	Signature       crypto.Signature
+}
+
 type Transaction struct {
+	// Only used for native NFT logic
+	TxInner any
+	// Any arbitrary data for the VM
 	Data      []byte
-	PublicKey crypto.PublicKey
+	To        crypto.PublicKey
+	Value     uint64
+	From      crypto.PublicKey
 	Signature *crypto.Signature
-	hash      types.Hash
-	//firstseen is the timestamp of when this tx is first seen locally
-	firstSeen int64
+	Nonce     int64
+
+	// cached version of the tx data hash
+	hash types.Hash
 }
 
 func NewTransaction(data []byte) *Transaction {
 	return &Transaction{
-		Data: data,
+		Data:  data,
+		Nonce: rand.Int63n(1000000000000000),
 	}
 }
 
@@ -29,11 +59,12 @@ func (tx *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash {
 }
 
 func (tx *Transaction) Sign(privateKey crypto.PrivateKey) error {
-	sig, err := privateKey.Sign(tx.Data)
+	hash := tx.Hash(TxHasher{})
+	sig, err := privateKey.Sign(hash.ToSlice())
 	if err != nil {
 		return err
 	}
-	tx.PublicKey = privateKey.PublicKey()
+	tx.From = privateKey.PublicKey()
 	tx.Signature = sig
 	return nil
 }
@@ -42,19 +73,20 @@ func (tx *Transaction) Verify() error {
 	if tx.Signature == nil {
 		return fmt.Errorf("Transaction has no signature")
 	}
-	if !tx.Signature.Verify(tx.PublicKey, tx.Data) {
+	hash := tx.Hash(TxHasher{})
+	if !tx.Signature.Verify(tx.From, hash.ToSlice()) {
 		return fmt.Errorf("invalid transaction signature")
 	}
 	return nil
 }
 
-func (tx *Transaction) SetFirstSeen(t int64) {
-	tx.firstSeen = t
-}
+// func (tx *Transaction) SetFirstSeen(t int64) {
+// 	tx.firstSeen = t
+// }
 
-func (tx *Transaction) FirstSeen() int64 {
-	return tx.firstSeen
-}
+// func (tx *Transaction) FirstSeen() int64 {
+// 	return tx.firstSeen
+// }
 
 func (tx *Transaction) Decode(dec Decoder[*Transaction]) error {
 	return dec.Decode(tx)
@@ -62,4 +94,9 @@ func (tx *Transaction) Decode(dec Decoder[*Transaction]) error {
 
 func (tx *Transaction) Encode(enc Encoder[*Transaction]) error {
 	return enc.Encode(tx)
+}
+
+func init() {
+	gob.Register(CollectionTx{})
+	gob.Register(MintTx{})
 }
